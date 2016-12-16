@@ -14,16 +14,16 @@ main = do
         filename <- return $ head args
         peFile <- getPEFile filename
         putStrLn $ show peFile
-      
+
 getPEFile :: String -> IO (Maybe PEFile)
 getPEFile filename = do
         bytes <- getFileContents filename
-        let offset = case (runGet getWord16le bytes) of 
+        let offset = case (runGet getWord16le bytes) of
                         0x5A4D -> Just $ runGet (do skip 0x3c; fromIntegral <$> getInt32le) bytes
                         0x4E50 -> Just 0
                         _      -> Nothing
          in return $ fmap (\offset -> PEFile $ getCOFFHeader offset bytes) offset
-     
+
 getFileContents filename = mmapFileByteStringLazy filename Nothing
 
 data PEFile = PEFile {
@@ -40,15 +40,15 @@ data COFFHeader = COFFHeader {
     , sizeOptHeader :: Word16
     , characteristics :: Word16
     } deriving (Show, Eq)
-    
+
 data PEMachine = PEM_Any | PEM_AM33 | PEM_AMD64 | PEM_ARM |
     PEM_ARMNT | PEM_EBC | PEM_I386 | PEM_IA64 | PEM_M32R | PEM_MIPS16 |
     PEM_MIPSFPU | PEM_MIPSFPU16 | PEM_POWERPC | PEM_POWERPCFP |
-    PEM_R4000 | PEM_RISCV32 | PEM_RISCV64 | PEM_RISCV128 | 
+    PEM_R4000 | PEM_RISCV32 | PEM_RISCV64 | PEM_RISCV128 |
     PEM_SH3 | PEM_SH3DSP | PEM_SH4 | PEM_SH5 | PEM_THUMB | PEM_WCEMIPSV2 |
     PEM_Unknown Word16
     deriving (Show, Eq)
-    
+
 peMachine 0x0 = PEM_Any
 peMachine 0x1d3 = PEM_AM33
 peMachine 0x8664 = PEM_AMD64
@@ -79,7 +79,7 @@ getCOFFHeader offset bytes =
         runGet readHeader bytes
     where readHeader = do
             skip offset
-            COFFHeader <$>                     
+            COFFHeader <$>
                 getByteString 4 <*>
                 (peMachine <$> getWord16le) <*>
                 getWord16le <*>
@@ -87,6 +87,4 @@ getCOFFHeader offset bytes =
                 getWord32le <*>
                 getWord32le <*>
                 getWord16le <*>
-                getWord16le 
-
-        
+                getWord16le
