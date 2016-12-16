@@ -4,24 +4,33 @@ import Data.Word (Word32, Word16)
 import System.IO.MMap (mmapFileByteStringLazy)
 import System.Environment (getArgs)
 
+import Data.Binary.Get
+
 import qualified Data.ByteString as B
-import qualified Data.Binary.Get as G
 
 main :: IO ()
 main = do
         args <- getArgs
         filename <- return $ head args
+        peFile <- getPEFile filename
+        putStrLn $ show peFile
+      
+getPEFile :: String -> IO (Maybe PEFile)
+getPEFile filename = do
         bytes <- getFileContents filename
-        header <- return $ getPEHeader bytes
-        putStrLn ("Header: " ++ (show header))
-        
-runGetMaybe g i = case G.runGetOrFail g i of
-    Left (_,_,_) -> Nothing
-    Right (_,_,v) -> Just v
-        
+        let offset = case (runGet getWord16le bytes) of 
+                        0x5A4D -> Just $ runGet (do skip 0x3c; fromIntegral <$> getInt32le) bytes
+                        0x4E50 -> Just 0
+                        _      -> Nothing
+         in return $ fmap (\offset -> PEFile $ getCOFFHeader offset bytes) offset
+     
 getFileContents filename = mmapFileByteStringLazy filename Nothing
 
-data PEHeader = PEHeader {
+data PEFile = PEFile {
+      coffHeader :: COFFHeader
+    } deriving (Show, Eq)
+
+data COFFHeader = COFFHeader {
       signature :: B.ByteString
     , machine :: PEMachine
     , nSections :: Word16
@@ -66,18 +75,18 @@ peMachine 0x1c2 = PEM_THUMB
 peMachine 0x169 = PEM_WCEMIPSV2
 peMachine i = PEM_Unknown i
 
-getPEHeader bytes = let
-        offset = G.runGet (do G.skip 0x3c; fromIntegral <$> G.getInt32le) bytes
-        readHeader offset = do
-            G.skip offset
-            PEHeader <$>                     
-                G.getByteString 4 <*>
-                (peMachine <$> G.getWord16le) <*>
-                G.getWord16le <*>
-                G.getWord32le <*>
-                G.getWord32le <*>
-                G.getWord32le <*>
-                G.getWord16le <*>
-                G.getWord16le 
-        in G.runGet (readHeader offset) bytes
+getCOFFHeader offset bytes =
+        runGet readHeader bytes
+    where readHeader = do
+            skip offset
+            COFFHeader <$>                     
+                getByteString 4 <*>
+                (peMachine <$> getWord16le) <*>
+                getWord16le <*>
+                getWord32le <*>
+                getWord32le <*>
+                getWord32le <*>
+                getWord16le <*>
+                getWord16le 
+
         
