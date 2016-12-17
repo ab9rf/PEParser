@@ -22,17 +22,27 @@ getPEFile filename = do
                         0x5A4D -> Just $ runGet (do skip 0x3c; fromIntegral <$> getInt32le) bytes
                         0x4E50 -> Just 0
                         _      -> Nothing
-         in return $ fmap (\offset -> PEFile $ getCOFFHeader offset bytes) offset
+         in return $ fmap (readPEFile bytes) offset
+
+readPEFile bytes offset = runGet r bytes
+    where r :: Get PEFile
+          r = do
+                skip offset
+                signature <- getByteString 4
+                coffheader <- getCOFFHeader
+                let pe = PEFile signature coffheader
+                  in return pe
+
 
 getFileContents filename = mmapFileByteStringLazy filename Nothing
 
 data PEFile = PEFile {
-      coffHeader :: COFFHeader
+      signature :: B.ByteString
+    , coffHeader :: COFFHeader
     } deriving (Show, Eq)
 
 data COFFHeader = COFFHeader {
-      signature :: B.ByteString
-    , machine :: PEMachine
+      machine :: PEMachine
     , nSections :: Word16
     , datetime :: Word32
     , ofsSymbolTable :: Word32
@@ -75,16 +85,12 @@ peMachine 0x1c2 = PEM_THUMB
 peMachine 0x169 = PEM_WCEMIPSV2
 peMachine i = PEM_Unknown i
 
-getCOFFHeader offset bytes =
-        runGet readHeader bytes
-    where readHeader = do
-            skip offset
-            COFFHeader <$>
-                getByteString 4 <*>
-                (peMachine <$> getWord16le) <*>
-                getWord16le <*>
-                getWord32le <*>
-                getWord32le <*>
-                getWord32le <*>
-                getWord16le <*>
-                getWord16le
+getCOFFHeader :: Get COFFHeader
+getCOFFHeader = COFFHeader <$>
+                    (peMachine <$> getWord16le) <*> -- Machine
+                    getWord16le <*>                 -- NumberOfSections
+                    getWord32le <*>                 -- TimeDateStamp
+                    getWord32le <*>                 -- PointerToSymbolTable
+                    getWord32le <*>                 -- NumberOfSymbols
+                    getWord16le <*>                 -- SizeOfOptionalHeader
+                    getWord16le                     -- Characteristics
