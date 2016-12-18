@@ -1,6 +1,6 @@
 module Main where
 
-import Data.Word (Word32, Word16)
+import Data.Word (Word32, Word16, Word8)
 import System.IO.MMap (mmapFileByteStringLazy)
 import System.Environment (getArgs)
 
@@ -30,7 +30,10 @@ readPEFile bytes offset = runGet r bytes
                 skip offset
                 signature <- getByteString 4
                 coffheader <- getCOFFHeader
-                let pe = PEFile signature coffheader
+                optHeader <- case (sizeOptHeader coffheader) of
+                    0 -> return Nothing
+                    _ -> Just <$> getOptionalHeader
+                let pe = PEFile signature coffheader optHeader
                   in return pe
 
 
@@ -39,6 +42,7 @@ getFileContents filename = mmapFileByteStringLazy filename Nothing
 data PEFile = PEFile {
       signature :: B.ByteString
     , coffHeader :: COFFHeader
+    , optionalHeader :: Maybe OptionalHeader
     } deriving (Show, Eq)
 
 data COFFHeader = COFFHeader {
@@ -49,6 +53,17 @@ data COFFHeader = COFFHeader {
     , nSymbols :: Word32
     , sizeOptHeader :: Word16
     , characteristics :: Word16
+    } deriving (Show, Eq)
+
+data OptionalHeader = OptionalHeader {
+      magic :: Word16
+    , majorLinkerVersion :: Word8
+    , minorLinkerVersion :: Word8
+    , sizeOfCode :: Word32
+    , sizeOfInitializedData :: Word32
+    , sieszofUninitializedData :: Word32
+    , addressOfEntryPoint :: Word32
+    , baseOfCode :: Word32
     } deriving (Show, Eq)
 
 data PEMachine = PEM_Any | PEM_AM33 | PEM_AMD64 | PEM_ARM |
@@ -86,11 +101,22 @@ peMachine 0x169 = PEM_WCEMIPSV2
 peMachine i = PEM_Unknown i
 
 getCOFFHeader :: Get COFFHeader
-getCOFFHeader = COFFHeader <$>
-                    (peMachine <$> getWord16le) <*> -- Machine
-                    getWord16le <*>                 -- NumberOfSections
-                    getWord32le <*>                 -- TimeDateStamp
-                    getWord32le <*>                 -- PointerToSymbolTable
-                    getWord32le <*>                 -- NumberOfSymbols
-                    getWord16le <*>                 -- SizeOfOptionalHeader
-                    getWord16le                     -- Characteristics
+getCOFFHeader = COFFHeader
+                    <$> (peMachine <$> getWord16le)  -- Machine
+                    <*> getWord16le                  -- NumberOfSections
+                    <*> getWord32le                  -- TimeDateStamp
+                    <*> getWord32le                  -- PointerToSymbolTable
+                    <*> getWord32le                  -- NumberOfSymbols
+                    <*> getWord16le                  -- SizeOfOptionalHeader
+                    <*> getWord16le                     -- Characteristics
+
+getOptionalHeader :: Get OptionalHeader
+getOptionalHeader = OptionalHeader
+                        <$> getWord16le         -- Magic
+                        <*> getWord8            -- MajorLinkerVersion
+                        <*> getWord8            -- MinorLinkerVersion
+                        <*> getWord32le         -- SizeOfCode
+                        <*> getWord32le         -- SizeOfInitializedData
+                        <*> getWord32le         -- SizeOfUninitializedData
+                        <*> getWord32le         -- AddressOfEntryPoint
+                        <*> getWord32le         -- BaseOfCode
