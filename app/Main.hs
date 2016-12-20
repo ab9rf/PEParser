@@ -31,8 +31,8 @@ readPEFile bytes offset = runGet r bytes
                 signature <- getByteString 4
                 coffheader <- getCOFFHeader
                 optHeader <- case (sizeOptHeader coffheader) of
-                    0 -> return Nothing
-                    _ -> Just <$> getOptionalHeader
+                    0 -> return OptionalHeaderNone
+                    _ -> getOptionalHeader
                 let pe = PEFile signature coffheader optHeader
                   in return pe
 
@@ -42,7 +42,7 @@ getFileContents filename = mmapFileByteStringLazy filename Nothing
 data PEFile = PEFile {
       signature :: B.ByteString
     , coffHeader :: COFFHeader
-    , optionalHeader :: Maybe OptionalHeader
+    , optionalHeader :: OptionalHeader
     } deriving (Show, Eq)
 
 data COFFHeader = COFFHeader {
@@ -55,16 +55,30 @@ data COFFHeader = COFFHeader {
     , characteristics :: Word16
     } deriving (Show, Eq)
 
-data OptionalHeader = OptionalHeader {
-      magic :: Word16
-    , majorLinkerVersion :: Word8
-    , minorLinkerVersion :: Word8
-    , sizeOfCode :: Word32
-    , sizeOfInitializedData :: Word32
-    , sieszofUninitializedData :: Word32
-    , addressOfEntryPoint :: Word32
-    , baseOfCode :: Word32
-    } deriving (Show, Eq)
+data OptionalHeader =
+      OptionalHeaderNone
+    | OptionalHeader32 {
+          magic :: Word16
+        , majorLinkerVersion :: Word8
+        , minorLinkerVersion :: Word8
+        , sizeOfCode :: Word32
+        , sizeOfInitializedData :: Word32
+        , sieszofUninitializedData :: Word32
+        , addressOfEntryPoint :: Word32
+        , baseOfCode :: Word32
+        , baseOfData :: Word32
+        }
+    | OptionalHeader32P {
+          magic :: Word16
+        , majorLinkerVersion :: Word8
+        , minorLinkerVersion :: Word8
+        , sizeOfCode :: Word32
+        , sizeOfInitializedData :: Word32
+        , sieszofUninitializedData :: Word32
+        , addressOfEntryPoint :: Word32
+        , baseOfCode :: Word32
+    }
+    deriving (Show, Eq)
 
 data PEMachine = PEM_Any | PEM_AM33 | PEM_AMD64 | PEM_ARM |
     PEM_ARMNT | PEM_EBC | PEM_I386 | PEM_IA64 | PEM_M32R | PEM_MIPS16 |
@@ -111,12 +125,24 @@ getCOFFHeader = COFFHeader
                     <*> getWord16le                     -- Characteristics
 
 getOptionalHeader :: Get OptionalHeader
-getOptionalHeader = OptionalHeader
-                        <$> getWord16le         -- Magic
-                        <*> getWord8            -- MajorLinkerVersion
-                        <*> getWord8            -- MinorLinkerVersion
-                        <*> getWord32le         -- SizeOfCode
-                        <*> getWord32le         -- SizeOfInitializedData
-                        <*> getWord32le         -- SizeOfUninitializedData
-                        <*> getWord32le         -- AddressOfEntryPoint
-                        <*> getWord32le         -- BaseOfCode
+getOptionalHeader = do magic <- getWord16le
+                       case magic of
+                           0x10b -> OptionalHeader32
+                                        <$> pure magic          -- Magic
+                                        <*> getWord8            -- MajorLinkerVersion
+                                        <*> getWord8            -- MinorLinkerVersion
+                                        <*> getWord32le         -- SizeOfCode
+                                        <*> getWord32le         -- SizeOfInitializedData
+                                        <*> getWord32le         -- SizeOfUninitializedData
+                                        <*> getWord32le         -- AddressOfEntryPoint
+                                        <*> getWord32le         -- BaseOfCode
+                                        <*> getWord32le         -- BaseOfData
+                           0x20b -> OptionalHeader32P
+                                        <$> pure magic          -- Magic
+                                        <*> getWord8            -- MajorLinkerVersion
+                                        <*> getWord8            -- MinorLinkerVersion
+                                        <*> getWord32le         -- SizeOfCode
+                                        <*> getWord32le         -- SizeOfInitializedData
+                                        <*> getWord32le         -- SizeOfUninitializedData
+                                        <*> getWord32le         -- AddressOfEntryPoint
+                                        <*> getWord32le         -- BaseOfCode
