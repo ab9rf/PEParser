@@ -1,6 +1,6 @@
 module Main where
 
-import Data.Word (Word32, Word16, Word8)
+import Data.Word (Word64, Word32, Word16, Word8)
 import System.IO.MMap (mmapFileByteStringLazy)
 import System.Environment (getArgs)
 
@@ -67,6 +67,27 @@ data OptionalHeader =
         , addressOfEntryPoint :: Word32
         , baseOfCode :: Word32
         , baseOfData :: Word32
+        , imageBase32 :: Word32
+        , sectionAlignment :: Word32
+        , fileAlignment :: Word32
+        , majorOSVersion :: Word16
+        , minorOSVersion :: Word16
+        , majorImageVersion :: Word16
+        , minorImageVersion :: Word16
+        , majorSubsysVersion :: Word16
+        , minorSubsysVersion :: Word16
+        , win32VersionValue :: Word32
+        , sizeOfImage :: Word32
+        , sizeOfHeaders :: Word32
+        , checkSum :: Word32
+        , subSystem :: Word16
+        , dllCharacteristics :: Word16
+        , sizeOfStackReserve32 :: Word32
+        , sizeOfStackCommit32 :: Word32
+        , sizeOfHeapReserve32 :: Word32
+        , sizeOfHeapCommit32 :: Word32
+        , loaderFlags :: Word32
+        , numberOfRvaAndSizes :: Word32
         }
     | OptionalHeader32P {
           magic :: Word16
@@ -77,6 +98,27 @@ data OptionalHeader =
         , sieszofUninitializedData :: Word32
         , addressOfEntryPoint :: Word32
         , baseOfCode :: Word32
+        , imageBase64 :: Word64
+        , sectionAlignment :: Word32
+        , fileAlignment :: Word32
+        , majorOSVersion :: Word16
+        , minorOSVersion :: Word16
+        , majorImageVersion :: Word16
+        , minorImageVersion :: Word16
+        , majorSubsysVersion :: Word16
+        , minorSubsysVersion :: Word16
+        , win32VersionValue :: Word32
+        , sizeOfImage :: Word32
+        , sizeOfHeaders :: Word32
+        , checkSum :: Word32
+        , subSystem :: Word16
+        , dllCharacteristics :: Word16
+        , sizeOfStackReserve64 :: Word64
+        , sizeOfStackCommit64 :: Word64
+        , sizeOfHeapReserve64 :: Word64
+        , sizeOfHeapCommit64 :: Word64
+        , loaderFlags :: Word32
+        , numberOfRvaAndSizes :: Word32
     }
     deriving (Show, Eq)
 
@@ -137,6 +179,28 @@ getOptionalHeader = do magic <- getWord16le
                                         <*> getWord32le         -- AddressOfEntryPoint
                                         <*> getWord32le         -- BaseOfCode
                                         <*> getWord32le         -- BaseOfData
+                                        -- start of Windows-specific header
+                                        <*> getWord32le         -- ImageBase
+                                        <*> getWord32le         -- SectionAlignment
+                                        <*> getWord32le         -- FileAlignment
+                                        <*> getWord16le         -- MajorOperatingSystemVersion
+                                        <*> getWord16le         -- MinorOperatingSystemVersion
+                                        <*> getWord16le         -- MajorImageVersion
+                                        <*> getWord16le         -- MinorImageVersion
+                                        <*> getWord16le         -- MajorSubsystemVersion
+                                        <*> getWord16le         -- MinorSubsystemVersion
+                                        <*> getWord32le         -- Win32VersionValue
+                                        <*> getWord32le         -- SizeOfImage
+                                        <*> getWord32le         -- SizeOfHeaders
+                                        <*> getWord32le         -- Checksum
+                                        <*> getWord16le         -- Subsystem
+                                        <*> getWord16le         -- DllCharacteristics
+                                        <*> getWord32le         -- SizeOfStackReserve
+                                        <*> getWord32le         -- SizeOfStackCommit
+                                        <*> getWord32le         -- SizeOfHeapReserve
+                                        <*> getWord32le         -- SizeOfHeapCommit
+                                        <*> getWord32le         -- LoaderFlags
+                                        <*> getWord32le         -- NumberOfRvaAndSizes
                            0x20b -> OptionalHeader32P
                                         <$> pure magic          -- Magic
                                         <*> getWord8            -- MajorLinkerVersion
@@ -146,3 +210,25 @@ getOptionalHeader = do magic <- getWord16le
                                         <*> getWord32le         -- SizeOfUninitializedData
                                         <*> getWord32le         -- AddressOfEntryPoint
                                         <*> getWord32le         -- BaseOfCode
+                                        -- start of Windows-specific header
+                                        <*> getWord64le         -- ImageBase
+                                        <*> getWord32le         -- SectionAlignment
+                                        <*> getWord32le         -- FileAlignment
+                                        <*> getWord16le         -- MajorOperatingSystemVersion
+                                        <*> getWord16le         -- MinorOperatingSystemVersion
+                                        <*> getWord16le         -- MajorImageVersion
+                                        <*> getWord16le         -- MinorImageVersion
+                                        <*> getWord16le         -- MajorSubsystemVersion
+                                        <*> getWord16le         -- MinorSubsystemVersion
+                                        <*> getWord32le         -- Win32VersionValue
+                                        <*> getWord32le         -- SizeOfImage
+                                        <*> getWord32le         -- SizeOfHeaders
+                                        <*> getWord32le         -- Checksum
+                                        <*> getWord16le         -- Subsystem
+                                        <*> getWord16le         -- DllCharacteristics
+                                        <*> getWord64le         -- SizeOfStackReserve
+                                        <*> getWord64le         -- SizeOfStackCommit
+                                        <*> getWord64le         -- SizeOfHeapReserve
+                                        <*> getWord64le         -- SizeOfHeapCommit
+                                        <*> getWord32le         -- LoaderFlags
+                                        <*> getWord32le         -- NumberOfRvaAndSizes
