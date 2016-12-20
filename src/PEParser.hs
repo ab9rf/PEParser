@@ -67,6 +67,23 @@ peMachine 0x1c2 = PEM_THUMB
 peMachine 0x169 = PEM_WCEMIPSV2
 peMachine i = PEM_Unknown i
 
+data PESubsystem = PES_Unknown | PES_Native | PES_WindowsGUI | PES_WindowsCUI |
+    PES_POSIX | PES_WindowsCE | PES_EFIApplication | PES_EFIBootServiceDriver |
+    PES_EFIRuntimeDriver | PES_EFIROM | PES_XBOX
+    deriving (Show, Eq)
+
+peSubsystem 0 = PES_Unknown
+peSubsystem 1 = PES_Native
+peSubsystem 2 = PES_WindowsGUI
+peSubsystem 3 = PES_WindowsCUI
+peSubsystem 7 = PES_POSIX
+peSubsystem 9 = PES_WindowsCE
+peSubsystem 10 = PES_EFIApplication
+peSubsystem 11 = PES_EFIBootServiceDriver
+peSubsystem 12 = PES_EFIRuntimeDriver
+peSubsystem 13 = PES_EFIROM
+peSubsystem 14 = PES_XBOX
+
 -----------------------------------------------------------------
 
 data PEFile = PEFile {
@@ -110,7 +127,7 @@ data OptionalHeader =
         , sizeOfImage :: Word32
         , sizeOfHeaders :: Word32
         , checkSum :: Word32
-        , subSystem :: Word16
+        , subSystem :: PESubsystem
         , dllCharacteristics :: Word16
         , sizeOfStackReserve32 :: Word32
         , sizeOfStackCommit32 :: Word32
@@ -141,7 +158,7 @@ data OptionalHeader =
         , sizeOfImage :: Word32
         , sizeOfHeaders :: Word32
         , checkSum :: Word32
-        , subSystem :: Word16
+        , subSystem :: PESubsystem
         , dllCharacteristics :: Word16
         , sizeOfStackReserve64 :: Word64
         , sizeOfStackCommit64 :: Word64
@@ -191,7 +208,7 @@ getOptionalHeader = do magic <- getWord16le
                                         <*> getWord32le         -- SizeOfImage
                                         <*> getWord32le         -- SizeOfHeaders
                                         <*> getWord32le         -- Checksum
-                                        <*> getWord16le         -- Subsystem
+                                        <*> (peSubsystem <$> getWord16le)         -- Subsystem
                                         <*> getWord16le         -- DllCharacteristics
                                         <*> getWord32le         -- SizeOfStackReserve
                                         <*> getWord32le         -- SizeOfStackCommit
@@ -222,7 +239,7 @@ getOptionalHeader = do magic <- getWord16le
                                         <*> getWord32le         -- SizeOfImage
                                         <*> getWord32le         -- SizeOfHeaders
                                         <*> getWord32le         -- Checksum
-                                        <*> getWord16le         -- Subsystem
+                                        <*> (peSubsystem <$> getWord16le)         -- Subsystem
                                         <*> getWord16le         -- DllCharacteristics
                                         <*> getWord64le         -- SizeOfStackReserve
                                         <*> getWord64le         -- SizeOfStackCommit
@@ -230,5 +247,4 @@ getOptionalHeader = do magic <- getWord16le
                                         <*> getWord64le         -- SizeOfHeapCommit
                                         <*> getWord32le         -- LoaderFlags
                                         <*> getWord32le         -- NumberOfRvaAndSizes
-
 
