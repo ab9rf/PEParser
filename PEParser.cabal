@@ -15,8 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     PEParser
   build-depends:       base >= 4.7 && < 5
+                     , mmap
+                     , binary
+                     , bytestring
   default-language:    Haskell2010
 
 executable PEParser-exe
@@ -24,9 +27,6 @@ executable PEParser-exe
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , mmap
-                     , binary
-                     , bytestring
                      , PEParser
   default-language:    Haskell2010
 
